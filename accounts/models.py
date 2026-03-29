@@ -51,6 +51,7 @@ class Company(models.Model):
     location = models.CharField(max_length=100)
     website = models.URLField(blank=True, null=True)
     phoneNumber = models.CharField(max_length=20, blank=True, null=True)
+    isApproved = models.BooleanField(default=False)
 
     def __str__(self):
         return self.companyName

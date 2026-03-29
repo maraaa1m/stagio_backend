@@ -3,10 +3,9 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import Application
 from .serializers import ApplicationSerializer
-from accounts.models import Student
+from accounts.models import Student, Company
 from offers.models import InternshipOffer
 from utils.matching import calculate_matching_score
-from accounts.models import Student, Company
 
 
 @api_view(['POST'])
@@ -102,3 +101,72 @@ def get_company_applications(request):
         })
 
     return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(['PUT'])
+def accept_application(request, application_id):
+    try:
+        company = Company.objects.get(user=request.user)
+        application = Application.objects.get(
+            id=application_id,
+            offer__company=company
+        )
+    except Company.DoesNotExist:
+        return Response(
+            {'error': 'Only companies can accept applications'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    except Application.DoesNotExist:
+        return Response(
+            {'error': 'Application not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    if application.applicationStatus != 'PENDING':
+        return Response(
+            {'error': 'Application already processed'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    application.applicationStatus = 'ACCEPTED'
+    application.save()
+
+    return Response({
+        'message': 'Application accepted — university admin notified',
+        'status': 'ACCEPTED'
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['PUT'])
+def refuse_application(request, application_id):
+    try:
+        company = Company.objects.get(user=request.user)
+        application = Application.objects.get(
+            id=application_id,
+            offer__company=company
+        )
+    except Company.DoesNotExist:
+        return Response(
+            {'error': 'Only companies can refuse applications'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    except Application.DoesNotExist:
+        return Response(
+            {'error': 'Application not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    if application.applicationStatus != 'PENDING':
+        return Response(
+            {'error': 'Application already processed'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    reason = request.data.get('reason', 'No reason provided')
+    application.applicationStatus = 'REFUSED'
+    application.save()
+
+    return Response({
+        'message': f'Application refused. Reason: {reason}',
+        'status': 'REFUSED'
+    }, status=status.HTTP_200_OK)
