@@ -33,6 +33,11 @@ class Student(models.Model):
     portfolioLink = models.URLField(blank=True, null=True)
     cvFile = models.FileField(upload_to='cvs/', blank=True, null=True)
     univWillaya = models.CharField(max_length=100)
+    skills = models.ManyToManyField(
+        'offers.Skill',
+        blank=True,
+        related_name='students'
+    )
 
     def __str__(self):
         return f"{self.firstName} {self.lastName}"

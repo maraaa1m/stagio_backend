@@ -74,6 +74,7 @@ class StudentUpdateSerializer(serializers.ModelSerializer):
             'univWillaya',
             'githubLink',
             'portfolioLink',
+            'skills',
         ]
 class CompanyUpdateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -85,3 +86,4 @@ class CompanyUpdateSerializer(serializers.ModelSerializer):
             'website',
             'phoneNumber',
         ]
+        
