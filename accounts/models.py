@@ -45,6 +45,7 @@ class Company(models.Model):
     logoUrl = models.URLField(blank=True, null=True)
     location = models.CharField(max_length=100)
     website = models.URLField(blank=True, null=True)
+    phoneNumber = models.CharField(max_length=20, blank=True, null=True)
 
     def __str__(self):
         return self.companyName

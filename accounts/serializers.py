@@ -14,6 +14,13 @@ class StudentRegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ['email', 'password']
 
+    def validate_email(self, value):
+        if not value.endswith('.dz'):
+            raise serializers.ValidationError(
+                "Invalid email, use your professional one"
+            )
+        return value
+
     def create(self, validated_data):
         user = User.objects.create_user(
             username=validated_data['email'],
@@ -57,3 +64,24 @@ class CompanyRegisterSerializer(serializers.ModelSerializer):
             website=self.context['request'].data.get('website'),
         )
         return user
+
+
+class StudentUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Student
+        fields = [
+            'phoneNumber',
+            'univWillaya',
+            'githubLink',
+            'portfolioLink',
+        ]
+class CompanyUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = [
+            'location',
+            'logoUrl',
+            'description',
+            'website',
+            'phoneNumber',
+        ]
