@@ -12,10 +12,8 @@ urlpatterns = [
     path('api/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
-    # Accounts (auth + student + company)
-    path('api/auth/', include('accounts.urls')),
-    path('api/student/', include('accounts.urls')),
-    path('api/company/', include('accounts.urls')),
+    # All accounts (auth + student + company + admin)
+    path('api/', include('accounts.urls')),
 
     # Offers
     path('api/', include('offers.urls')),
@@ -23,4 +21,3 @@ urlpatterns = [
     # Applications
     path('api/', include('applications.urls')),
 ]
-

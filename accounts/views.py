@@ -7,6 +7,8 @@ from .serializers import StudentRegisterSerializer, CompanyRegisterSerializer, S
 from .models import Student, Company
 
 
+
+
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     return {
@@ -152,3 +154,6 @@ def update_company_profile(request):
             {'error': 'Company not found!'},
             status=status.HTTP_404_NOT_FOUND
         )
+
+
+       
