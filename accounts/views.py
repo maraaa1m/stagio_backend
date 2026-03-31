@@ -6,6 +6,11 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from .serializers import StudentRegisterSerializer, CompanyRegisterSerializer, StudentUpdateSerializer, CompanyUpdateSerializer
 from .models import Student, Company
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.core.mail import send_mail
+from .models import User
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -142,3 +147,43 @@ def upload_company_logo(request):
         return Response({'message': 'Logo uploaded', 'url': company.logo.url}, status=status.HTTP_200_OK)
     except Company.DoesNotExist:
         return Response({'error': 'Company not found'}, status=status.HTTP_404_NOT_FOUND)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def forgot_password(request):
+    email = request.data.get('email')
+    try:
+        user = User.objects.get(email=email)
+        token = default_token_generator.make_token(user)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        reset_url = f"http://localhost:3000/reset-password/{uid}/{token}/"
+        
+        send_mail(
+            'Password Reset - Stag.io',
+            f'Click the link to reset your password: {reset_url}',
+            'noreply@stag.io',
+            [email],
+            fail_silently=False,
+        )
+        return Response({'message': 'Reset link sent to email'})
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=404)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request):
+    uidb64 = request.data.get('uid')
+    token = request.data.get('token')
+    new_password = request.data.get('new_password')
+    
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+        
+        if default_token_generator.check_token(user, token):
+            user.set_password(new_password)
+            user.save()
+            return Response({'message': 'Password updated successfully'})
+        else:
+            return Response({'error': 'Invalid or expired token'}, status=400)
+    except Exception:
+        return Response({'error': 'Invalid request'}, status=400)

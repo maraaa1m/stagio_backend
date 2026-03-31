@@ -18,4 +18,6 @@ urlpatterns = [
     path('admin/statistics/', admin_views.get_statistics),
     path('admin/companies/<str:company_id>/blacklist/', admin_views.blacklist_company),
     path('admin/companies/blacklisted/', admin_views.get_blacklisted_companies),  
+    path('auth/forgot-password/', views.forgot_password),
+    path('auth/reset-password/', views.reset_password),
 ]
