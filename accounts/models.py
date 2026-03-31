@@ -27,10 +27,11 @@ class Student(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     firstName = models.CharField(max_length=100)
     lastName = models.CharField(max_length=100)
-    IDCardNumber = models.CharField(max_length=50, unique=True)
+    IDCardNumber = models.CharField(max_length=50, unique=True, null=True, blank=True)
     phoneNumber = models.CharField(max_length=20)
     githubLink = models.URLField(blank=True, null=True)
     portfolioLink = models.URLField(blank=True, null=True)
+    profile_photo = models.ImageField(upload_to='profiles/', blank=True, null=True)
     cvFile = models.FileField(upload_to='cvs/', blank=True, null=True)
     univWillaya = models.CharField(max_length=100)
     skills = models.ManyToManyField(
@@ -47,11 +48,12 @@ class Company(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     companyName = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
-    logoUrl = models.URLField(blank=True, null=True)
+    logo = models.ImageField(upload_to='logos/', blank=True, null=True)
     location = models.CharField(max_length=100)
     website = models.URLField(blank=True, null=True)
     phoneNumber = models.CharField(max_length=20, blank=True, null=True)
     isApproved = models.BooleanField(default=False)
+    isBlacklisted = models.BooleanField(default=False)
 
     def __str__(self):
         return self.companyName

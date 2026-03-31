@@ -1,12 +1,10 @@
 from rest_framework import serializers
 from .models import InternshipOffer, Skill
 
-
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Skill
         fields = ['id', 'skillName']
-
 
 class InternshipOfferSerializer(serializers.ModelSerializer):
     requiredSkills = SkillSerializer(many=True, read_only=True)

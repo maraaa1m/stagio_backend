@@ -1,13 +1,11 @@
 from django.db import models
 from accounts.models import Company, Student
 
-
 class Skill(models.Model):
     skillName = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
         return self.skillName
-
 
 class InternshipOffer(models.Model):
     ONLINE = 'ONLINE'

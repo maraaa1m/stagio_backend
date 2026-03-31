@@ -2,7 +2,6 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import User, Student, Company
 
-
 class StudentRegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
@@ -16,9 +15,7 @@ class StudentRegisterSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         if not value.endswith('.dz'):
-            raise serializers.ValidationError(
-                "Invalid email, use your professional one"
-            )
+            raise serializers.ValidationError("Invalid email, use your professional one")
         return value
 
     def create(self, validated_data):
@@ -69,21 +66,9 @@ class CompanyRegisterSerializer(serializers.ModelSerializer):
 class StudentUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = [
-            'phoneNumber',
-            'univWillaya',
-            'githubLink',
-            'portfolioLink',
-            'skills',
-        ]
+        fields = ['phoneNumber', 'univWillaya', 'githubLink', 'portfolioLink', 'skills', 'IDCardNumber']
+
 class CompanyUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
-        fields = [
-            'location',
-            'logoUrl',
-            'description',
-            'website',
-            'phoneNumber',
-        ]
-        
+        fields = ['location', 'description', 'website', 'phoneNumber']

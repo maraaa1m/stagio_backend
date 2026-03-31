@@ -1,13 +1,11 @@
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from .serializers import StudentRegisterSerializer, CompanyRegisterSerializer, StudentUpdateSerializer, CompanyUpdateSerializer
 from .models import Student, Company
-
-
-
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -16,40 +14,25 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token),
     }
 
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_student(request):
-    serializer = StudentRegisterSerializer(
-        data=request.data,
-        context={'request': request}
-    )
+    serializer = StudentRegisterSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
         user = serializer.save()
         tokens = get_tokens_for_user(user)
-        return Response({
-            'message': 'Student registered successfully',
-            'tokens': tokens
-        }, status=status.HTTP_201_CREATED)
+        return Response({'message': 'Student registered successfully', 'tokens': tokens}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_company(request):
-    serializer = CompanyRegisterSerializer(
-        data=request.data,
-        context={'request': request}
-    )
+    serializer = CompanyRegisterSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
         user = serializer.save()
         tokens = get_tokens_for_user(user)
-        return Response({
-            'message': 'Company registered successfully — awaiting admin approval',
-            'tokens': tokens
-        }, status=status.HTTP_201_CREATED)
+        return Response({'message': 'Company registered successfully — awaiting admin approval', 'tokens': tokens}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 @api_view(['GET'])
 def get_student_profile(request):
@@ -63,14 +46,12 @@ def get_student_profile(request):
             'univWillaya': student.univWillaya,
             'githubLink': student.githubLink,
             'portfolioLink': student.portfolioLink,
+            'photo': student.profile_photo.url if student.profile_photo else None,
+            'cv': student.cvFile.url if student.cvFile else None,
         }
         return Response(data, status=status.HTTP_200_OK)
     except Student.DoesNotExist:
-        return Response(
-            {'error': 'Student not found'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-
+        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['POST'])
 def logout(request):
@@ -78,39 +59,47 @@ def logout(request):
         refresh_token = request.data.get('refresh')
         token = RefreshToken(refresh_token)
         token.blacklist()
-        return Response(
-            {'message': 'Logged out successfully'},
-            status=status.HTTP_200_OK
-        )
+        return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
     except TokenError:
-        return Response(
-            {'error': 'Invalid token'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
+        return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['PUT'])
 def update_student_profile(request):
     try:
         student = Student.objects.get(user=request.user)
-        serializer = StudentUpdateSerializer(
-            student,
-            data=request.data,
-            partial=True
-        )
+        serializer = StudentUpdateSerializer(student, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response({
-                'message': 'Profile updated successfully',
-                'data': serializer.data
-            }, status=status.HTTP_200_OK)
+            return Response({'message': 'Profile updated successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Student.DoesNotExist:
-        return Response(
-            {'error': 'Student not found'},
-            status=status.HTTP_404_NOT_FOUND
-        )
+        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
 
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def upload_student_photo(request):
+    try:
+        student = Student.objects.get(user=request.user)
+        if 'photo' not in request.FILES:
+            return Response({'error': 'No photo provided'}, status=status.HTTP_400_BAD_REQUEST)
+        student.profile_photo = request.FILES['photo']
+        student.save()
+        return Response({'message': 'Photo uploaded', 'url': student.profile_photo.url}, status=status.HTTP_200_OK)
+    except Student.DoesNotExist:
+        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def upload_cv(request):
+    try:
+        student = Student.objects.get(user=request.user)
+        if 'cv' not in request.FILES:
+            return Response({'error': 'No CV file provided'}, status=status.HTTP_400_BAD_REQUEST)
+        student.cvFile = request.FILES['cv']
+        student.save()
+        return Response({'message': 'CV uploaded successfully'}, status=status.HTTP_200_OK)
+    except Student.DoesNotExist:
+        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['GET'])
 def get_company_profile(request):
@@ -120,40 +109,36 @@ def get_company_profile(request):
             'email': request.user.email,
             'companyName': company.companyName,
             'description': company.description,
-            'logoUrl': company.logoUrl,
+            'logo': company.logo.url if company.logo else None,
             'location': company.location,
             'website': company.website,
             'phoneNumber': company.phoneNumber,
         }
         return Response(data, status=status.HTTP_200_OK)
     except Company.DoesNotExist:
-        return Response(
-            {'error': 'Company not found!'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-
+        return Response({'error': 'Company not found!'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['PUT'])
 def update_company_profile(request):
     try:
         company = Company.objects.get(user=request.user)
-        serializer = CompanyUpdateSerializer(
-            company,
-            data=request.data,
-            partial=True
-        )
+        serializer = CompanyUpdateSerializer(company, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response({
-                'message': 'Profile updated successfully',
-                'data': serializer.data
-            }, status=status.HTTP_200_OK)
+            return Response({'message': 'Profile updated successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Company.DoesNotExist:
-        return Response(
-            {'error': 'Company not found!'},
-            status=status.HTTP_404_NOT_FOUND
-        )
+        return Response({'error': 'Company not found!'}, status=status.HTTP_404_NOT_FOUND)
 
-
-       
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def upload_company_logo(request):
+    try:
+        company = Company.objects.get(user=request.user)
+        if 'logo' not in request.FILES:
+            return Response({'error': 'No logo provided'}, status=status.HTTP_400_BAD_REQUEST)
+        company.logo = request.FILES['logo']
+        company.save()
+        return Response({'message': 'Logo uploaded', 'url': company.logo.url}, status=status.HTTP_200_OK)
+    except Company.DoesNotExist:
+        return Response({'error': 'Company not found'}, status=status.HTTP_404_NOT_FOUND)
