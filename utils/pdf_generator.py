@@ -1,109 +1,133 @@
 import io
+import os
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from django.core.files.base import ContentFile
+from django.conf import settings
 
 def generate_agreement_pdf(application, admin):
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
 
-    p.setFont("Helvetica-Bold", 22)
-    p.drawCentredString(width/2, height - 50, "CONVENTION DE STAGE")
-    p.setFont("Helvetica-Bold", 18)
-    p.drawCentredString(width/2, height - 80, "ENTRE")
-
-   
-    p.setLineWidth(1)
-    p.rect(40, height - 210, 230, 110) 
-    p.setFont("Helvetica-Bold", 10)
-    p.drawString(50, height - 120, f"UNIVERSITY OF {str(admin.university).upper()}")
-    p.setFont("Helvetica", 8)
-    p.drawString(50, height - 135, "New Town Ali Mendjeli, Constantine – Algeria")
-    p.setFont("Helvetica-Bold", 9)
-    p.drawString(50, height - 160, "Represented by:")
-    p.setFont("Helvetica", 9)
-    p.drawString(50, height - 175, "The Vice Rector in charge of")
-    p.drawString(50, height - 185, "External Relations")
-    p.drawString(50, height - 200, "Tel/Fax : + 00 213 031 82 45 79")
-
+    p.setFont("Helvetica-Bold", 12)
+    p.drawCentredString(width/2, height - 30, "PEOPLE'S DEMOCRATIC REPUBLIC OF ALGERIA")
+    p.drawCentredString(width/2, height - 45, "Ministry of Higher Education and Scientific Research")
     
+    logo_path = os.path.join(settings.BASE_DIR, 'static/images/logo_constantine2.png')
+    if os.path.exists(logo_path):
+        p.drawImage(logo_path, 40, height - 100, width=2.5*cm, preserveAspectRatio=True, mask='auto')
+    else:
+        p.setFont("Helvetica-Bold", 10)
+        p.drawString(40, height - 80, "[UNIVERSITY LOGO]")
+
+    p.setFont("Helvetica-Bold", 20)
+    p.drawCentredString(width/2 + 30, height - 85, "INTERNSHIP AGREEMENT")
     p.setFont("Helvetica-Bold", 16)
-    p.drawCentredString(width/2, height - 160, "AND")
+    p.drawCentredString(width/2 + 30, height - 110, "BETWEEN")
 
-  
-    p.rect(width - 270, height - 210, 230, 110)
+    p.setLineWidth(1)
+    p.rect(40, height - 240, 235, 110)
     p.setFont("Helvetica-Bold", 10)
-    p.drawString(width - 260, height - 120, "THE COMPANY (Name & Address)")
-    p.setFont("Helvetica", 9)
-    p.drawString(width - 260, height - 140, f"{str(application.offer.company.companyName)}")
-    p.drawString(width - 260, height - 150, f"{str(application.offer.company.location)}")
+    p.drawString(50, height - 145, f"UNIVERSITY OF {str(admin.university).upper()}")
+    p.setFont("Helvetica", 8)
+    p.drawString(50, height - 160, "New Town Ali Mendjeli, Constantine – Algeria")
     p.setFont("Helvetica-Bold", 9)
-    p.drawString(width - 260, height - 170, "Represented by:")
+    p.drawString(50, height - 185, "Represented by:")
     p.setFont("Helvetica", 9)
-    p.drawString(width - 260, height - 185, "The Director / Manager")
-    p.drawString(width - 260, height - 200, f"Tel: {str(application.offer.company.phoneNumber or '................')}")
+    p.drawString(50, height - 200, "The Vice Rector in charge of")
+    p.drawString(50, height - 210, "External Relations")
+    p.drawString(50, height - 230, "Tel/Fax : + 00 213 031 82 45 79")
 
-   
+    p.setFont("Helvetica-Bold", 16)
+    p.drawCentredString(width/2, height - 185, "AND")
+
+    p.rect(width - 275, height - 240, 235, 110)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(width - 265, height - 145, "THE COMPANY (Name & Address)")
+    p.setFont("Helvetica", 9)
+    p.drawString(width - 265, height - 165, f"{str(application.offer.company.companyName)}")
+    p.drawString(width - 265, height - 175, f"{str(application.offer.company.location)}")
+    p.setFont("Helvetica-Bold", 9)
+    p.drawString(width - 265, height - 195, "Represented by:")
+    p.setFont("Helvetica", 9)
+    p.drawString(width - 265, height - 210, "The Director / Manager")
+    p.drawString(width - 265, height - 230, f"Tel: {str(application.offer.company.phoneNumber or '................')}")
+
     p.setLineWidth(1.5)
-    p.rect(40, height - 540, 515, 310) 
+    p.rect(40, height - 580, 515, 315)
     p.setFont("Helvetica-Bold", 14)
-    
-    p.drawCentredString(width/2, height - 260, "STUDENT INFORMATION DATA")
-    p.line(width/2 - 100, height - 265, width/2 + 100, height - 265)
+    p.drawCentredString(width/2, height - 295, "STUDENT INFORMATION DATA")
+    p.line(width/2 - 110, height - 300, width/2 + 110, height - 300)
     
     p.setFont("Helvetica", 11)
-    y_start = height - 300
-    line_height = 24
+    y = height - 335
+    lh = 24
     
-    p.drawString(50, y_start, f"Full Name: {application.student.lastName} {application.student.firstName}")
-    p.drawString(50, y_start - line_height, f"Faculty: {str(admin.faculty)}")
-    p.drawString(50, y_start - (line_height*2), f"Department: {str(admin.department)}")
-    p.drawString(50, y_start - (line_height*3), f"Student ID Card No: {str(application.student.IDCardNumber or 'N/A')}      Social Security No: ....................")
-    p.drawString(50, y_start - (line_height*4), f"Phone Number: {str(application.student.phoneNumber)}")
-    p.drawString(50, y_start - (line_height*5), f"Degree Pursued: Computer Science (L3TI)")
-    p.drawString(50, y_start - (line_height*6), f"Internship Topic: {str(application.offer.title)}")
-    p.drawString(50, y_start - (line_height*7), f"Academic Supervisor: {str(admin.firstName)} {str(admin.lastName)}")
+    p.drawString(55, y, f"Full Name : {application.student.lastName} {application.student.firstName}")
+    p.drawString(55, y-lh, f"Faculty : {str(admin.faculty)}")
+    p.drawString(55, y-lh*2, f"Department : {str(admin.department)}")
+    p.drawString(55, y-lh*3, f"Student ID No : {str(application.student.IDCardNumber or 'N/A')}      Social Security No : ....................")
+    p.drawString(55, y-lh*4, f"Phone Number : {str(application.student.phoneNumber)}")
+    p.drawString(55, y-lh*5, f"Degree Pursued : Licence (L3) - Information Technology")
+    p.drawString(55, y-lh*6, f"Internship Topic : {str(application.offer.title)}")
+    p.drawString(55, y-lh*7, f"Academic Supervisor : {str(admin.firstName)} {str(admin.lastName)}")
     
     try:
         duration = (application.offer.deadline - application.offer.startingDay).days
     except:
         duration = "................"
 
-    p.drawString(50, y_start - (line_height*8), f"Duration of Internship: {duration} Days")
-    p.drawString(50, y_start - (line_height*9), f"Starting Date: {str(application.offer.startingDay)}      Ending Date: {str(application.offer.deadline)}")
-
+    p.drawString(55, y-lh*8, f"Duration of Internship : {duration} Days")
+    p.drawString(55, y-lh*9, f"Starting Date : {str(application.offer.startingDay)}      Ending Date : {str(application.offer.deadline)}")
 
     p.setFont("Helvetica-Bold", 10)
-    p.drawString(50, height - 600, "Department Head Approval:")
-    p.drawString(50, height - 700, "For the Company")
-    p.drawRightString(width - 50, height - 700, "For the University")
+    p.drawString(60, height - 640, "Department Head Approval")
+    p.drawCentredString(width/2, height - 720, "For the Company")
+    p.drawRightString(width - 60, height - 720, "For the University")
+    
+    p.line(50, height - 660, 180, height - 660)
+    p.line(width/2 - 60, height - 780, width/2 + 60, height - 780)
+    p.line(width - 180, height - 780, width - 60, height - 780)
+
+    p.setFont("Helvetica-Oblique", 8)
+    p.drawCentredString(width/2, 20, "Page 1 of 2 - Generated by Stag.io Digital Platform")
 
     p.showPage()
-    p.setFont("Helvetica-Bold", 14)
+    p.setFont("Helvetica-Bold", 16)
     p.drawCentredString(width/2, height - 50, "TERMS AND CONDITIONS")
-    
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(50, height - 100, "Article 1: Object")
-    p.setFont("Helvetica", 10)
-    p.drawString(50, height - 120, f"The purpose of this agreement is to define the conditions for hosting students within the")
-    p.drawString(50, height - 135, f"company {str(application.offer.company.companyName)} for a practical internship.")
+    p.line(50, height - 55, width - 50, height - 55)
 
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(50, height - 170, "Article 2: Goal of the Internship")
-    p.setFont("Helvetica", 10)
-    p.drawString(50, height - 190, "The internship is intended to provide the student with a practical application of the theoretical")
-    p.drawString(50, height - 205, "knowledge taught at the university.")
+    p.setFont("Helvetica-Bold", 11)
+    y_art = height - 90
+    margin = 50
+    spacing = 15
 
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(50, height - 240, "Article 3: Confidentiality")
-    p.setFont("Helvetica", 10)
-    p.drawString(50, height - 260, "The student must maintain professional secrecy regarding all internal company data and projects.")
+    articles = [
+        ("Article 1: Purpose", f"This agreement defines the conditions for receiving students from the University of Constantine 2 at {str(application.offer.company.companyName)} to complete a practical internship and prepare a final report."),
+        ("Article 2: Internship Goal", "The internship aims to ensure practical application of university teachings by involving the student in real-world professional tasks within the host organization."),
+        ("Article 3: Student Status", "During the stay, the student retains their official university status. They remain under the administrative responsibility of the University of Constantine 2."),
+        ("Article 4: Internal Regulations", "The student is subject to the internal regulations of the host company, including discipline, working hours, safety rules, and professional secrecy."),
+        ("Article 5: Social Protection", "The student continues to benefit from the student health insurance scheme provided by the national social security legislation during the internship period."),
+        ("Article 6: Liability and Accidents", "In case of a work-related accident, the company must notify the University immediately. Declaration will be filed with the CNAS according to the prevailing laws."),
+        ("Article 7: Confidentiality", "The student must maintain strict confidentiality regarding company trade secrets. The report remains company property but will be shared for academic evaluation.")
+    ]
 
-   
-    p.drawCentredString(width/2, 30, "Digitally Generated by Stag.io - University of Constantine 2")
+    for title, text in articles:
+        p.setFont("Helvetica-Bold", 11)
+        p.drawString(margin, y_art, title)
+        p.setFont("Helvetica", 10)
+        p.drawString(margin, y_art - spacing, text[:110])
+        if len(text) > 110:
+            p.drawString(margin, y_art - spacing*2, text[110:])
+            y_art -= 65
+        else:
+            y_art -= 50
+
+    p.setFont("Helvetica-Oblique", 8)
+    p.drawCentredString(width/2, 20, "Page 2 of 2 - Generated by Stag.io Digital Platform")
 
     p.save()
     buffer.seek(0)
-    return ContentFile(buffer.read(), name=f"convention_{application.id}.pdf")
+    return ContentFile(buffer.read(), name=f"agreement_{application.id}.pdf")
