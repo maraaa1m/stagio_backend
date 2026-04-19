@@ -18,7 +18,7 @@ urlpatterns = [
     path('student/update/',        views.update_student_profile),
     path('student/profile/photo/', views.upload_student_photo),
     path('student/cv/upload/',     views.upload_cv),
-    path('student/upload-cv/',     views.upload_cv),   # alias used by MediaSetup
+    path('student/upload-cv/',     views.upload_cv),
 
     # ── Company ───────────────────────────────────────────────────────────────
     path('company/profile/',     views.get_company_profile),
@@ -28,6 +28,7 @@ urlpatterns = [
     # ── Admin ─────────────────────────────────────────────────────────────────
     path('admin/statistics/',                           admin_views.get_statistics),
     path('admin/agreements/',                           admin_views.get_all_agreements),
+    path('admin/students/',                             admin_views.get_all_students),
     path('admin/companies/',                            admin_views.get_all_companies),
     path('admin/companies/pending/',                    admin_views.get_pending_companies),
     path('admin/companies/blacklisted/',                admin_views.get_blacklisted_companies),

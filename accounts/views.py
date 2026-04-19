@@ -19,13 +19,11 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 
-
-# ── Custom login view (embeds role in JWT) ─────────────────────────────────────
+# ── CUSTOM LOGIN ──
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
-
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# ── HELPER: TOKEN ISSUANCE ──
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     refresh['role'] = user.role
@@ -34,18 +32,16 @@ def get_tokens_for_user(user):
         'access':  str(refresh.access_token),
     }
 
-
+# ── HELPER: CANONICAL DATA ORCHESTRATOR ──
 def _build_student_profile(student, request):
-    """Return the canonical student profile dict used in every GET response."""
-    request_scheme = request.scheme if request else 'http'
-    request_host   = request.get_host() if request else 'localhost:8000'
-    base_url       = f"{request_scheme}://{request_host}"
-
-    def abs_url(field):
+    """
+    Logic: Ensures all media paths are converted to Absolute URIs.
+    This allows the React Frontend to find the files on the laptop storage.
+    """
+    def get_abs_url(field):
         if not field:
             return None
-        url = field.url
-        return url if url.startswith('http') else f"{base_url}{url}"
+        return request.build_absolute_uri(field.url)
 
     return {
         'email':         student.user.email,
@@ -55,13 +51,23 @@ def _build_student_profile(student, request):
         'univWillaya':   student.univWillaya,
         'githubLink':    student.githubLink or '',
         'portfolioLink': student.portfolioLink or '',
-        'photo':         abs_url(student.profile_photo),
-        'cv':            abs_url(student.cvFile),
+        
+        # MEDIA ASSETS (Absolute Links)
+        'photo':         get_abs_url(student.profile_photo),
+        'cv':            get_abs_url(student.cvFile),
+        
+        # INSTITUTIONAL METADATA
+        'department':           student.department,
+        'departmentLabel':      student.get_department_display(),
+        'socialSecurityNumber': student.socialSecurityNumber or 'Not Provided',
+        'IDCardNumber':         student.IDCardNumber or 'Not Provided',
+        
+        # SKILL MATRIX
         'skills':        [{'id': s.id, 'skillName': s.skillName} for s in student.skills.all()],
     }
 
+# ── ONBOARDING ──
 
-# ── Registration ───────────────────────────────────────────────────────────────
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_student(request):
@@ -69,36 +75,30 @@ def register_student(request):
     if serializer.is_valid():
         user   = serializer.save()
         tokens = get_tokens_for_user(user)
-        return Response(
-            {'message': 'Student registered successfully', **tokens},
-            status=status.HTTP_201_CREATED,
-        )
+        return Response({'message': 'Success', **tokens}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@parser_classes([MultiPartParser, FormParser])
 def register_company(request):
+    """Logic: Accepts the Registre de Commerce PDF stream during registration."""
     serializer = CompanyRegisterSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
         user   = serializer.save()
         tokens = get_tokens_for_user(user)
-        return Response(
-            {'message': 'Company registered successfully — awaiting admin approval', **tokens},
-            status=status.HTTP_201_CREATED,
-        )
+        return Response({'message': 'Company registered successfully', **tokens}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# ── STUDENT OPERATIONS ──
 
-# ── Student profile ────────────────────────────────────────────────────────────
 @api_view(['GET'])
 def get_student_profile(request):
     try:
         student = Student.objects.get(user=request.user)
         return Response(_build_student_profile(student, request), status=status.HTTP_200_OK)
     except Student.DoesNotExist:
-        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
-
+        return Response({'error': 'Not found'}, status=404)
 
 @api_view(['PUT'])
 def update_student_profile(request):
@@ -107,71 +107,54 @@ def update_student_profile(request):
         serializer = StudentUpdateSerializer(student, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            # Return the full, refreshed profile so frontend can update state
-            return Response(
-                {
-                    'message': 'Profile updated successfully',
-                    'data':    _build_student_profile(student, request),
-                },
-                status=status.HTTP_200_OK,
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Updated', 'data': _build_student_profile(student, request)}, status=200)
+        return Response(serializer.errors, status=400)
     except Student.DoesNotExist:
-        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
-
+        return Response(status=404)
 
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
 def upload_student_photo(request):
     try:
         student = Student.objects.get(user=request.user)
-        if 'photo' not in request.FILES:
-            return Response({'error': 'No photo provided'}, status=status.HTTP_400_BAD_REQUEST)
+        if 'photo' not in request.FILES: return Response(status=400)
         student.profile_photo = request.FILES['photo']
         student.save()
-        url = request.build_absolute_uri(student.profile_photo.url)
-        return Response({'message': 'Photo uploaded', 'url': url}, status=status.HTTP_200_OK)
-    except Student.DoesNotExist:
-        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
-
+        return Response({'url': request.build_absolute_uri(student.profile_photo.url)})
+    except:
+        return Response(status=404)
 
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
 def upload_cv(request):
     try:
         student = Student.objects.get(user=request.user)
-        if 'cv' not in request.FILES:
-            return Response({'error': 'No CV file provided'}, status=status.HTTP_400_BAD_REQUEST)
+        if 'cv' not in request.FILES: return Response(status=400)
         student.cvFile = request.FILES['cv']
         student.save()
-        url = request.build_absolute_uri(student.cvFile.url)
-        return Response({'message': 'CV uploaded successfully', 'url': url}, status=status.HTTP_200_OK)
-    except Student.DoesNotExist:
-        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'url': request.build_absolute_uri(student.cvFile.url)})
+    except:
+        return Response(status=404)
 
+# ── COMPANY OPERATIONS ──
 
-# ── Company profile ────────────────────────────────────────────────────────────
 @api_view(['GET'])
 def get_company_profile(request):
     try:
         company = Company.objects.get(user=request.user)
-        logo_url = None
-        if company.logo:
-            logo_url = request.build_absolute_uri(company.logo.url)
-        data = {
-            'email':       request.user.email,
-            'companyName': company.companyName,
-            'description': company.description or '',
-            'logo':        logo_url,
-            'location':    company.location,
-            'website':     company.website or '',
-            'phoneNumber': company.phoneNumber or '',
-            'isApproved':  company.isApproved,
-        }
-        return Response(data, status=status.HTTP_200_OK)
+        return Response({
+            'email':            request.user.email,
+            'companyName':      company.companyName,
+            'description':      company.description or '',
+            'logo':             request.build_absolute_uri(company.logo.url) if company.logo else None,
+            'registreCommerce': request.build_absolute_uri(company.registreCommerce.url) if company.registreCommerce else None,
+            'location':         company.location,
+            'website':          company.website or '',
+            'phoneNumber':      company.phoneNumber or '',
+            'isApproved':       company.isApproved,
+        })
     except Company.DoesNotExist:
-        return Response({'error': 'Company not found'}, status=status.HTTP_404_NOT_FOUND)
-
+        return Response(status=404)
 
 @api_view(['PUT'])
 def update_company_profile(request):
@@ -180,79 +163,59 @@ def update_company_profile(request):
         serializer = CompanyUpdateSerializer(company, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(
-                {'message': 'Profile updated successfully'},
-                status=status.HTTP_200_OK,
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Success'})
+        return Response(serializer.errors, status=400)
     except Company.DoesNotExist:
-        return Response({'error': 'Company not found'}, status=status.HTTP_404_NOT_FOUND)
-
+        return Response(status=404)
 
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
 def upload_company_logo(request):
     try:
         company = Company.objects.get(user=request.user)
-        if 'logo' not in request.FILES:
-            return Response({'error': 'No logo provided'}, status=status.HTTP_400_BAD_REQUEST)
+        if 'logo' not in request.FILES: return Response(status=400)
         company.logo = request.FILES['logo']
         company.save()
-        url = request.build_absolute_uri(company.logo.url)
-        return Response({'message': 'Logo uploaded', 'url': url}, status=status.HTTP_200_OK)
-    except Company.DoesNotExist:
-        return Response({'error': 'Company not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'url': request.build_absolute_uri(company.logo.url)})
+    except:
+        return Response(status=404)
 
+# ── SECURITY UTILITIES ──
 
-# ── Auth ───────────────────────────────────────────────────────────────────────
 @api_view(['POST'])
 def logout(request):
     try:
         token = RefreshToken(request.data.get('refresh'))
         token.blacklist()
-        return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
-    except TokenError:
-        return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
-
+        return Response({'message': 'Logged out'}, status=200)
+    except:
+        return Response(status=400)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def forgot_password(request):
     email = request.data.get('email', '').strip()
-    # Always respond 200 to prevent user enumeration
     try:
         user  = User.objects.get(email=email)
         token = default_token_generator.make_token(user)
         uid   = urlsafe_base64_encode(force_bytes(user.pk))
         reset_url = f"http://localhost:5173/reset-password/{uid}/{token}/"
-        send_mail(
-            subject='Reset your Stag.io password',
-            message=f'Click the link below to reset your password:\n\n{reset_url}\n\nThis link expires in 24 hours.',
-            from_email='noreply@stag.io',
-            recipient_list=[email],
-            fail_silently=True,
-        )
-    except User.DoesNotExist:
-        pass  # Don't reveal whether the email exists
-    return Response(
-        {'message': 'If an account exists with this email, you will receive a reset link shortly.'},
-        status=status.HTTP_200_OK,
-    )
-
+        send_mail('Password Reset', f'Click here: {reset_url}', 'noreply@stag.io', [email])
+    except:
+        pass # Enumeration protection
+    return Response({'message': 'Email sent if account exists.'})
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def reset_password(request):
-    uidb64       = request.data.get('uid', '')
-    token        = request.data.get('token', '')
-    new_password = request.data.get('new_password', '')
+    uidb64, token, new_password = request.data.get('uid'), request.data.get('token'), request.data.get('new_password')
     try:
         uid  = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
         if default_token_generator.check_token(user, token):
             user.set_password(new_password)
             user.save()
-            return Response({'message': 'Password updated successfully'}, status=status.HTTP_200_OK)
-        return Response({'error': 'Invalid or expired link'}, status=status.HTTP_400_BAD_REQUEST)
-    except Exception:
-        return Response({'error': 'Invalid request'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Success'})
+        return Response({'error': 'Invalid token'}, status=400)
+    except:
+        return Response(status=400)
