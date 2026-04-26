@@ -25,40 +25,47 @@ class Application(models.Model):
         return f"{self.student} -> {self.offer}"
 
 class Internship(models.Model):
+    ONGOING = 'ONGOING' 
+    PENDING_CERT = 'PENDING_CERT' 
+    COMPLETED = 'COMPLETED' 
+    
+    STATUS_CHOICES = [
+        (ONGOING, 'Ongoing'),
+        (PENDING_CERT, 'Pending Certification'),
+        (COMPLETED, 'Completed'),
+    ]
+
     application = models.OneToOneField(Application, on_delete=models.CASCADE, related_name='internship')
     startDate = models.DateField()
     endDate = models.DateField()
     topic = models.CharField(max_length=200)
     supervisorName = models.CharField(max_length=200)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default=ONGOING)
 
     def __str__(self):
-        return f"Internship: {self.application.student}"
+        return f"Internship: {self.application.student} ({self.status})"
 
 class Agreement(models.Model):
-    GENERATED = 'GENERATED'
-    VALIDATED = 'VALIDATED'
-    DOWNLOADED = 'DOWNLOADED'
-
-    STATUS_CHOICES = [
-        (GENERATED, 'Generated'),
-        (VALIDATED, 'Validated'),
-        (DOWNLOADED, 'Downloaded'),
-    ]
-
     internship = models.OneToOneField(Internship, on_delete=models.CASCADE, related_name='agreement')
     admin = models.ForeignKey(Admin, on_delete=models.SET_NULL, null=True, related_name='agreements')
     generationDate = models.DateField(auto_now_add=True)
     pdfUrl = models.FileField(upload_to='agreements/', blank=True, null=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=GENERATED)
+    status = models.CharField(max_length=10, default='VALIDATED')
 
     def __str__(self):
-        return f"Agreement: {self.internship}"
+        return f"Agreement for {self.internship.application.student}"
+
+class Certificate(models.Model):
+    internship = models.OneToOneField(Internship, on_delete=models.CASCADE, related_name='certificate')
+    admin = models.ForeignKey(Admin, on_delete=models.SET_NULL, null=True, related_name='certificates')
+    issueDate = models.DateField(auto_now_add=True)
+    pdfUrl = models.FileField(upload_to='certificates/', blank=True, null=True)
+
+    def __str__(self):
+        return f"Certificate for {self.internship.application.student}"
 
 class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"Notification for {self.user.email}"

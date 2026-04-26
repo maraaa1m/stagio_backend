@@ -3,16 +3,18 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 
+# Logic: Decoupling secrets from source code for professional security
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-change-me')
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-architect-gold-key')
 
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
+# --- INSTITUTIONAL ECOSYSTEM ---
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -21,20 +23,20 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    # Core Libraries
+    # Technical Libraries
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
 
-    # Local Apps
+    # Logic Domains
     'accounts',
     'offers',
     'applications',
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware', # Logic: Must be first to allow React traffic
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -64,7 +66,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'stagio.wsgi.application'
 
-# --- DATABASE CONFIGURATION (POSTGRESQL) ---
+# --- DATABASE ORCHESTRATION (POSTGRESQL) ---
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -73,10 +75,13 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD', 'maha123'),
         'HOST': os.getenv('DB_HOST', '127.0.0.1'),
         'PORT': os.getenv('DB_PORT', '5432'),
+        'OPTIONS': {
+            'sslmode': 'prefer', # Logic: Optimized for Supabase/Production stability
+        },
     }
 }
 
-# --- CUSTOM USER MODEL ---
+# --- IDENTITY ARCHITECTURE ---
 AUTH_USER_MODEL = 'accounts.User'
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -91,16 +96,24 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# --- STATIC & MEDIA STORAGE ---
+# --- FILE SYSTEM & MEDIA STORAGE ---
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
+# Logic: Storing binary assets (CVs, Registres, Agreements) separately from code
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Institutional Rule: Allow professional-grade document uploads
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520 # 20MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20971520
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# --- REST FRAMEWORK CONFIG ---
+# --- REST FRAMEWORK ARCHITECTURE ---
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -110,7 +123,7 @@ REST_FRAMEWORK = {
     ],
 }
 
-# --- SIMPLE JWT CONFIG (INCLUDES CUSTOM ROLE LOGIC) ---
+# --- JWT GOVERNANCE (DEPT & ROLE INJECTION) ---
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -118,13 +131,13 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
     
-    # Architect's Logic: This line wires the custom claims (roles) to the token
-    'TOKEN_OBTAIN_SERIALIZER': 'accounts.serializers.MyTokenObtainPairSerializer',
+    # THE MASTER SWITCH: Maps to the Custom Serializer with Superadmin/Dept logic
+    'TOKEN_OBTAIN_SERIALIZER': 'accounts.serializers.CustomTokenObtainPairSerializer',
 }
 
-# --- CORS SETTINGS ---
-CORS_ALLOW_ALL_ORIGINS = True
+# --- BRIDGE SECURITY ---
+CORS_ALLOW_ALL_ORIGINS = True # Set to False and add domains for final production
 CORS_ALLOW_CREDENTIALS = True
 
-# --- EMAIL BACKEND (FOR TESTING) ---
+# --- EMAIL INFRASTRUCTURE (CONSOLE FOR DEV) ---
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
